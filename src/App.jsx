@@ -1,11 +1,16 @@
 import {useEffect, useState} from 'react'
-import { databases,ID, DATABASE_ID, COLLECTION_ID } from './appwrite'
+import { databases,ID, DATABASE_ID, COLLECTION_ID, storage, BUCKET_ID} from './appwrite'
 import './App.css'
 
 function App() {
   const [todos, setTodos] = useState([])
   const [newTodo, setNewTodo] = useState('')
   const [loading, setLoading] = useState(false)
+  const [image, setImage] = useState(null)
+
+  const getImageUrl = (imageId) => {
+    return storage.getFileView(BUCKET_ID, imageId)
+  }
 
   const getTodos = async () => {
     try {
@@ -28,15 +33,29 @@ function App() {
 
 const addTodo = async(event) => {
 event.preventDefault()
-if (!newTodo.trin()) return;
+if (!newTodo.trim()) return;
 try{
+
+  let imageId = ''
+
+  if (image) {
+    const uploadedImage = await storage.createFile(
+      BUCKET_ID,
+      ID.unique(),
+      image
+    )
+    imageId = uploadedImage.$id
+  }
+
+
 
 const createTodo = await databases.createDocument(
   DATABASE_ID,
   COLLECTION_ID,
-  ID_unique(),
+  ID.unique(),
   {
-title: newTodo
+title: newTodo,
+ imageId 
   }
 
 )
@@ -61,6 +80,9 @@ await databases.deleteDocument(
   COLLECTION_ID,
   id
 )
+if(todo.imagId){
+  await storage.deleteFile(BUCKET_ID, todo.imageId)
+}
 
 alert('KLIK')
 
@@ -95,6 +117,12 @@ console.error("Błąd usuwania TODO ", error)
   value={newTodo}
   onChange={(event) => setNewTodo(event.target.value)}
   />
+
+  <input
+  type="file"  
+  accept ="image/*"
+  onChange={(event) => setImage(event.target.files[0])}
+  />
   <button type="submit">
     Dodaj
   </button>
@@ -111,10 +139,16 @@ console.error("Błąd usuwania TODO ", error)
           ) : (
             todos.map((todo) => (
               <li key={todo.$id} className="todo-item">
+                <div className="todo-content">
+                  {todo.imageId && (
+                    <img src={getImageUrl(todo.imageId)} alt="Todo" className="todo-image"
+                    />
+                  )}
                 <span>{todo.title}</span>
                 <button type="button" onClick={() => deleteTodo(todo.$id)}>
                     Usuń
                 </button>
+                </div>
               </li>
             ))
           )
